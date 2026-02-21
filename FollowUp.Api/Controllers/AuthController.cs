@@ -2,8 +2,8 @@
 using FollowUp.Api.Data;
 using FollowUp.Api.Dtos;
 using FollowUp.Api.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc; // required for ControllerBase, IActionResult, routing attributes
+using Microsoft.EntityFrameworkCore; //enables async EF Core methods like: AnyAsync, FirstOrDefaultAync
 
 namespace FollowUp.Api.Controllers;
 
@@ -14,12 +14,21 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _context;
     private readonly JwtService _jwt;
 
-    public AuthController(AppDbContext context, JwtService jwt)
+    public AuthController(AppDbContext context, JwtService jwt)            // dependency injection happening
     {
         _context = context;
         _jwt = jwt;
     }
 
+
+
+
+    /*
+     Register flow:
+    client -> /register
+    ---> user saved in DB
+    ---> password safely hashed
+     */
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterDto dto)
     {
@@ -40,6 +49,15 @@ public class AuthController : ControllerBase
         return Ok();
     }
 
+
+
+    /*
+     Login flow:
+    Client -> /login
+    ----> credentials verified
+    ----> JWT issued
+    ----> user is now authenticated for future requests
+     */
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDto dto)
     {

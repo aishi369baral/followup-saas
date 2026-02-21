@@ -1,41 +1,65 @@
 ﻿{
+  //This tells the editor what shape this JSON file should follow helping in auto-completion
   "$schema": "http://json.schemastore.org/launchsettings.json",
+
+  //this block applies only if you run the app using IIS/IIS Express.
   "iisSettings": {
-    "windowsAuthentication": false,
-    "anonymousAuthentication": true,
+    "windowsAuthentication": false, //users will not be auto-authentiacted using Windows account. we are using app-level auth (register/login).
+    "anonymousAuthentication": true, //allows users to access the app without windows credentials.
+    // these settings are used only when you choose "IIS Express in visual studio"
     "iisExpress": {
-      "applicationUrl": "http://localhost:37217",
-      "sslPort": 44316
+      "applicationUrl": "http://localhost:37217", // the HTTP URL + Port IIS Express listens on.
+      "sslPort": 44316 // HTTPS port for IIS Express, used when app securely running via HTTPS, these ports are for local only.
     }
   },
+
+  // Each profile is one way to run the app. When clicking Run Button in visual stidio, you are choosing one of them.
   "profiles": {
-    "http": {
+    "http": { // this profile runs the app via HTTP only.
+      "commandName": "Project", //tels vs to run this .Net project directly. uses dotnet run
+      "dotnetRunMessages": true, // shows startup message in console eg: Now Listening on...
+      "launchBrowser": true, //automatically opens browser when app starts
+      "launchUrl": "swagger", //Browser opens at http ://localhost:5101/swagger...this is why swagger opens immediately
+      "applicationUrl": "http://localhost:5101", //actual address app run on, Kestrel listens on port 5101
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development" //defines environment variables for this profile. It loads appsettings.Development.json
+      }
+    },
+    "https": { //this profile supports both http and https
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "http://localhost:5101",
+      "applicationUrl": "https://localhost:7135;http://localhost:5101", //App listens on two urls HTTPs->7135 & http->5101, https preferred by browser
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "https": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "launchUrl": "swagger",
-      "applicationUrl": "https://localhost:7135;http://localhost:5101",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "IIS Express": {
+    "IIS Express": { //this runs app via iIS Express instead of kestrel. tells vs to uses IIS Express, not dotnet run
       "commandName": "IISExpress",
-      "launchBrowser": true,
-      "launchUrl": "swagger",
+      "launchBrowser": true, //auto open browser on app start
+      "launchUrl": "swagger", //auto open swagger on browser on app start
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development" //in production mode it will be "Production"
       }
     }
   }
 }
+
+/*
+Notes:
+defines how the app starts locally 
+e.g.: which port, HTTP/HTTPS, environment used only during development, 
+not deployed to production.
+
+
+IIS Express vs Kestrel(dotnet run/ Project profile)
+
+  when app runs via IIS Express : 
+  http -> 37217
+  https -> 44316
+
+  when app runs via Kestrel:
+  http -> 5101
+  https -> 7135
+*/
