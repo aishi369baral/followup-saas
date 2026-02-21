@@ -116,4 +116,28 @@ public class FollowUpsController : ControllerBase
 
         return NoContent();
     }
+
+    // DELETE: api/followups/{id}
+    [HttpDelete("{id}")]
+    public IActionResult DeleteFollowUp(Guid id)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var followUp = _context.FollowUps
+            .Include(f => f.Client)
+            .FirstOrDefault(f =>
+                f.Id == id &&
+                f.Client.UserId == userId
+            );
+
+        if (followUp == null)
+            return NotFound();
+
+        _context.FollowUps.Remove(followUp);
+        _context.SaveChanges();
+
+        return NoContent();
+    }
 }
