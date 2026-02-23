@@ -22,20 +22,43 @@ public class ClientsController : ControllerBase
 
     // GET: api/clients
     [HttpGet]
-    public IActionResult GetClients()
+    [HttpGet]
+    public IActionResult GetClients(
+    int pageNumber = 1,
+    int pageSize = 10
+)
     {
-        // extracting the userid from JWT and converting it into GUID type
-        // this gives the userid of the user who sent the api request
-        // always extract the userid from JWT and never take it from Http request body as maicious users might intentially write a different userid in request body to get another user's data but they can never tamper with the userid stored in JWT
         var userId = Guid.Parse(
-     User.FindFirstValue(ClaimTypes.NameIdentifier)!
- );
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var totalCount = _context.Clients
+            .Count(c => c.UserId == userId);
 
         var clients = _context.Clients
             .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(c => new ClientResponseDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Company = c.Company,
+                Email = c.Email,
+                Phone = c.Phone,
+                Notes = c.Notes,
+                CreatedAt = c.CreatedAt
+            })
             .ToList();
 
-        return Ok(clients);
+        return Ok(new
+        {
+            totalCount,
+            pageNumber,
+            pageSize,
+            clients
+        });
     }
 
     // POST: api/clients
@@ -54,8 +77,12 @@ public class ClientsController : ControllerBase
 
         var client = new Client
         {
+            UserId = userId,
             Name = dto.Name,
-            UserId = userId
+            Company = dto.Company,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            Notes = dto.Notes,
         };
 
         _context.Clients.Add(client);
@@ -83,4 +110,31 @@ public class ClientsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPut("{id}")]
+    public IActionResult UpdateClient(Guid id, UpdateClientDto dto)
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var client = _context.Clients
+            .FirstOrDefault(c => c.Id == id && c.UserId == userId);
+
+        if (client == null)
+            return NotFound("Client not found");
+
+        client.Name = dto.Name;
+        client.Company = dto.Company;
+        client.Email = dto.Email;
+        client.Phone = dto.Phone;
+        client.Notes = dto.Notes;
+       
+        
+
+        _context.SaveChanges();
+        return Ok(client);
+    }
+
+
 }

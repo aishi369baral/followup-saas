@@ -39,31 +39,7 @@ public class FollowUpsController : ControllerBase
         return Ok(followUps);  
     }
 
-    // GET: api/followups/today
-    [HttpGet("today")]
-    public IActionResult GetTodayFollowUps()
-    {
-        var userId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
-
-        var today = DateTime.UtcNow.Date;
-
-        //getting all the followups posted by user that has nextfollowupdate as today's date and status is pending
-        var followUps = _context.FollowUps
-            .Include(f => f.Client)
-            .Where(f =>
-                f.Client.UserId == userId &&
-                f.Status == FollowUpStatus.Pending &&
-                f.NextFollowUpDate.Date == today
-            )
-            .OrderBy(f => f.NextFollowUpDate)
-            .ToList();
-
-        return Ok(followUps);
-    }
-
-    // POST: api/followups
+    // POST: api/followups/
     [HttpPost]
     public IActionResult CreateFollowUp(CreateFollowUpDto dto)
     {
@@ -92,6 +68,32 @@ public class FollowUpsController : ControllerBase
 
         return Ok(followUp);
     }
+
+    // GET: api/followups/today
+    [HttpGet("today")]
+    public IActionResult GetTodayFollowUps()
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var today = DateTime.UtcNow.Date;
+
+        //getting all the followups posted by user that has nextfollowupdate as today's date and status is pending
+        var followUps = _context.FollowUps
+            .Include(f => f.Client)
+            .Where(f =>
+                f.Client.UserId == userId &&
+                f.Status == FollowUpStatus.Pending &&
+                f.NextFollowUpDate.Date == today
+            )
+            .OrderBy(f => f.NextFollowUpDate)
+            .ToList();
+
+        return Ok(followUps);
+    }
+
+  
 
     // PUT: api/followups/{id}/complete
     [HttpPut("{id}/complete")]
