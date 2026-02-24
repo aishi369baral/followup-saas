@@ -20,23 +20,57 @@ public class FollowUpsController : ControllerBase
 
     // GET: api/followups
     [HttpGet]
-    public IActionResult GetFollowUps()
+    [HttpGet]
+    public IActionResult GetFollowUps(
+    [FromQuery] FollowUpStatus? status,
+    [FromQuery] string? clientName,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 20
+)
     {
-        // extracting the userid from JWT and converting it into GUID type
-        // this gives the userid of the user who sent the api request
-        // always extract the userid from JWT and never take it from Http request body as maicious users might intentially write a different userid in request body to get another user's data but they can never tamper with the userid stored in JWT
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 50) pageSize = 20;
+
         var userId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-        //getting all the followups posted by the user
-        var followUps = _context.FollowUps
+        // Base query: only this user's follow-ups
+        var query = _context.FollowUps
             .Include(f => f.Client)
             .Where(f => f.Client.UserId == userId)
+            .AsQueryable();
+
+        // Optional: filter by status
+        if (status.HasValue)
+        {
+            query = query.Where(f => f.Status == status.Value);
+        }
+
+        // Optional: filter by client name (case-insensitive)
+        if (!string.IsNullOrWhiteSpace(clientName))
+        {
+            query = query.Where(f =>
+                f.Client.Name.Contains(clientName)
+            );
+        }
+
+        var totalCount = query.Count();
+
+        var followUps = query
             .OrderBy(f => f.NextFollowUpDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToList();
 
-        return Ok(followUps);  
+        return Ok(new
+        {
+            page,
+            pageSize,
+            totalCount,
+            totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            data = followUps
+        });
     }
 
     // POST: api/followups/
@@ -155,6 +189,38 @@ public class FollowUpsController : ControllerBase
         _context.SaveChanges();
 
         return NoContent();
+    }
+
+    [HttpPut("{id}")]
+    public IActionResult EditFollowUp(Guid id, EditFollowUpDto dto)
+    {
+        // 1️⃣ Extract UserId from JWT
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        // 2️⃣ Fetch follow-up owned by this user
+        var followUp = _context.FollowUps
+            .Include(f => f.Client)
+            .FirstOrDefault(f =>
+                f.Id == id &&
+                f.Client.UserId == userId
+            );
+
+        // 3️⃣ Ownership check
+        if (followUp == null)
+            return NotFound("Follow-up not found");
+
+        // 4️⃣ Update allowed fields only
+        followUp.Reason = dto.Reason;
+        followUp.NextFollowUpDate = dto.NextFollowUpDate;
+        followUp.Status = dto.Status;
+
+        // 5️⃣ Save changes
+        _context.SaveChanges();
+
+        // 6️⃣ Return updated follow-up
+        return Ok(followUp);
     }
 
     // DELETE: api/followups/{id}
