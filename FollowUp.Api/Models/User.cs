@@ -8,6 +8,7 @@ namespace FollowUp.Api.Models
         [Required]
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
+        public UserPlan Plan { get; set; } = UserPlan.Free;
         [Required]
         [EmailAddress]
         public string Email { get; set; } = string.Empty;

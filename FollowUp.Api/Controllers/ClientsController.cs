@@ -69,10 +69,17 @@ public class ClientsController : ControllerBase
        User.FindFirstValue(ClaimTypes.NameIdentifier)!
    );
 
+        var user = _context.Users
+    .AsNoTracking()
+    .FirstOrDefault(u => u.Id == userId);
+
+        if (user == null)
+            return Unauthorized();
+
         //getting the number of clients of the user
         var clientCount = _context.Clients.Count(c => c.UserId == userId);
-
-        if (clientCount >= 5)
+       
+        if (user.Plan == UserPlan.Free && clientCount >= 5)
             return BadRequest("Free tier limit reached (max 5 clients)");
 
         var client = new Client

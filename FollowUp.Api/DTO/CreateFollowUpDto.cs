@@ -4,7 +4,7 @@
     {
         public Guid ClientId { get; set; }
         public DateTime NextFollowUpDate { get; set; }
-        public string Reason { get; set; }
+        public string Reason { get; set; } = null!;
 
     }
 }

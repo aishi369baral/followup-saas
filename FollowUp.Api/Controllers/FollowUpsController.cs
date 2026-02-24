@@ -93,7 +93,45 @@ public class FollowUpsController : ControllerBase
         return Ok(followUps);
     }
 
-  
+    // GET: api/followups/overdue
+    [HttpGet("overdue")]
+    public IActionResult GetOverdueFollowUps()
+    {
+        var userId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
+        );
+
+        var user = _context.Users
+    .AsNoTracking()
+    .FirstOrDefault(u => u.Id == userId);
+
+        if (user == null)
+            return Unauthorized();
+
+        int overdueLimit = user.Plan == UserPlan.Free ? 3 : int.MaxValue;
+
+        var today = DateTime.UtcNow.Date;
+
+        var overdueFollowUps = _context.FollowUps
+      .Include(f => f.Client)
+      .Where(f =>
+          f.Client.UserId == userId &&
+          f.Status == FollowUpStatus.Pending &&
+          f.NextFollowUpDate.Date < today
+      )
+      .OrderBy(f => f.NextFollowUpDate)
+      .Take(overdueLimit)
+      .Select(f => new OverdueFollowUpDto
+      {
+          FollowUpId = f.Id,
+          ClientName = f.Client.Name,
+          Reason = f.Reason,
+          DueDate = f.NextFollowUpDate
+      })
+      .ToList();
+
+        return Ok(overdueFollowUps);
+    }
 
     // PUT: api/followups/{id}/complete
     [HttpPut("{id}/complete")]
