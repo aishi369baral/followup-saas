@@ -19,35 +19,44 @@ public class FollowUpsController : ControllerBase
     }
 
     // GET: api/followups
-    [HttpGet]
+    // PURPOSE:
+    // - Returns follow-ups for Follow-ups page
+    // - Supports optional filters:
+    //   • status
+    //   • clientName
+    //   • today
+    // - SAME endpoint is reused for:
+    //   • "View all today" from dashboard
+    //   • Normal follow-up listing
+
+    // /api/followups? status = Pending                             Followup page
+    // / api / followups ? clientName = John                        Followup page
+    // / api / followups ? today = true                             Dashboard today view all 
+    // / api / followups ? status = Pending & clientName = John     Followup page
     [HttpGet]
     public IActionResult GetFollowUps(
-    [FromQuery] FollowUpStatus? status,
-    [FromQuery] string? clientName,
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 20
-)
+        [FromQuery] FollowUpStatus? status,
+        [FromQuery] string? clientName,
+        [FromQuery] bool? today
+    )
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1 || pageSize > 50) pageSize = 20;
-
+        // Extract userId securely from JWT
         var userId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-        // Base query: only this user's follow-ups
+        // Base query: all follow-ups belonging to this user
         var query = _context.FollowUps
             .Include(f => f.Client)
-            .Where(f => f.Client.UserId == userId)
-            .AsQueryable();
+            .Where(f => f.Client.UserId == userId);
 
-        // Optional: filter by status
+        // Optional filter: Status
         if (status.HasValue)
         {
             query = query.Where(f => f.Status == status.Value);
         }
 
-        // Optional: filter by client name (case-insensitive)
+        // Optional filter: Client name (search)
         if (!string.IsNullOrWhiteSpace(clientName))
         {
             query = query.Where(f =>
@@ -55,22 +64,21 @@ public class FollowUpsController : ControllerBase
             );
         }
 
-        var totalCount = query.Count();
+        // Optional filter: Today only
+        if (today == true)
+        {
+            var todayDate = DateTime.UtcNow.Date;
+            query = query.Where(f =>
+                f.NextFollowUpDate.Date == todayDate
+            );
+        }
 
+        // Final ordering
         var followUps = query
             .OrderBy(f => f.NextFollowUpDate)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .ToList();
 
-        return Ok(new
-        {
-            page,
-            pageSize,
-            totalCount,
-            totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-            data = followUps
-        });
+        return Ok(followUps);
     }
 
     // POST: api/followups/
@@ -101,70 +109,6 @@ public class FollowUpsController : ControllerBase
         _context.SaveChanges();
 
         return Ok(followUp);
-    }
-
-    // GET: api/followups/today
-    [HttpGet("today")]
-    public IActionResult GetTodayFollowUps()
-    {
-        var userId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
-
-        var today = DateTime.UtcNow.Date;
-
-        //getting all the followups posted by user that has nextfollowupdate as today's date and status is pending
-        var followUps = _context.FollowUps
-            .Include(f => f.Client)
-            .Where(f =>
-                f.Client.UserId == userId &&
-                f.Status == FollowUpStatus.Pending &&
-                f.NextFollowUpDate.Date == today
-            )
-            .OrderBy(f => f.NextFollowUpDate)
-            .ToList();
-
-        return Ok(followUps);
-    }
-
-    // GET: api/followups/overdue
-    [HttpGet("overdue")]
-    public IActionResult GetOverdueFollowUps()
-    {
-        var userId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
-
-        var user = _context.Users
-    .AsNoTracking()
-    .FirstOrDefault(u => u.Id == userId);
-
-        if (user == null)
-            return Unauthorized();
-
-        int overdueLimit = user.Plan == UserPlan.Free ? 3 : int.MaxValue;
-
-        var today = DateTime.UtcNow.Date;
-
-        var overdueFollowUps = _context.FollowUps
-      .Include(f => f.Client)
-      .Where(f =>
-          f.Client.UserId == userId &&
-          f.Status == FollowUpStatus.Pending &&
-          f.NextFollowUpDate.Date < today
-      )
-      .OrderBy(f => f.NextFollowUpDate)
-      .Take(overdueLimit)
-      .Select(f => new OverdueFollowUpDto
-      {
-          FollowUpId = f.Id,
-          ClientName = f.Client.Name,
-          Reason = f.Reason,
-          DueDate = f.NextFollowUpDate
-      })
-      .ToList();
-
-        return Ok(overdueFollowUps);
     }
 
     // PUT: api/followups/{id}/complete
