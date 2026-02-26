@@ -22,7 +22,7 @@ public class ClientsController : ControllerBase
 
     // GET: api/clients
     [HttpGet]
-    [HttpGet]
+    
     public IActionResult GetClients(
     int pageNumber = 1,
     int pageSize = 10
