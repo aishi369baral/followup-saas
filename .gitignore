@@ -3,6 +3,27 @@
 ##
 ## Get latest from `dotnet new gitignore`
 # SQLite database files
+
+
+# ===== Backend (.NET) =====
+bin/
+obj/
+*.user
+*.suo
+*.db
+appsettings.Development.json
+
+# ===== Frontend (React / Vite) =====
+followup-web/node_modules/
+followup-web/dist/
+followup-web/.env
+
+# ===== OS / Tools =====
+.vscode/
+.idea/
+.DS_Store
+
+
 *.db
 *.db-wal
 *.db-shm
